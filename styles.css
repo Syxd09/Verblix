@@ -1,0 +1,36 @@
+/* styles.css */
+
+/* Ensure messages are visible */
+#chat-box .p-4 {
+    color: black; /* Set default text color to black */
+    word-wrap: break-word; /* Ensure long messages wrap */
+}
+
+/* User message styling */
+.bg-blue-500.text-white {
+    color: white !important; /* Ensure text is white for user messages */
+}
+
+/* Bot message styling */
+.bg-gray-100.text-gray-900 {
+    color: black !important; /* Ensure text is black for bot messages */
+}
+
+/* Basic chat box styling */
+#chat-box {
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    overflow-y: auto; /* Enable vertical scrolling if needed */
+}
+
+/* Ensure chat container takes up space */
+#chat-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+body {
+    font-family: sans-serif; /* Fallback font */
+}
