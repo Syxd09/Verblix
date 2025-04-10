@@ -4,7 +4,19 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const generateSmartResponseStream = async (message, history = []) => {
     try {
         const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        // Define a stronger system instruction
+        const systemInstruction = {
+            // The 'role' is implicit when using the systemInstruction field
+            parts: [{ text: "You are a helpful AI assistant representing the company Lexora. You were created by Lexora. Your name is Lexora Assistant. Absolutely DO NOT mention Google or that you are a large language model trained by Google. If asked about your origins, creator, or who made you, state that you were created by Lexora." }]
+        };
+
+        // Get the specific model and include the system instruction
+        const model = genAI.getGenerativeModel({
+            model: "gemini-1.5-flash",
+            // Pass system instruction here
+            systemInstruction: systemInstruction,
+        });
 
         const filteredHistory = history.slice(0, -1); // Remove latest user message
 
