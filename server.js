@@ -65,14 +65,46 @@ function formatResponse(text, type = 'default') {
     return { type, text };
 }
 
+// Refined isBasicQuery function
 function isBasicQuery(message) {
-    const basicPatterns = [
-        'joke', 'fact', 'quote', 'riddle', 'calculate',
-        'help', 'hi', 'hello', 'hey',
-        '+', '-', '*', '/',
+    const basicKeywords = [
+        'joke', 'fact', 'quote', 'riddle', 'help', 'hi', 'hello', 'hey'
+        // Removed 'calculate' - handled separately
+        // Removed operators - handled separately
     ];
+    // Separate check for calculation intent
+    const calculationKeywords = ['calculate'];
+    const operatorRegex = /[\d\s()]*[+\-*/][\d\s()]+/; // Looks for pattern like number operator number
+
     message = message.toLowerCase();
-    return basicPatterns.some(pattern => message.includes(pattern));
+
+    // Check 1: Does it contain a basic keyword as a whole word?
+    const hasBasicKeyword = basicKeywords.some(pattern => {
+        // Use word boundaries (\b) to match whole words only
+        const regex = new RegExp(`\\b${pattern}\\b`);
+        return regex.test(message);
+    });
+
+    if (hasBasicKeyword) {
+        console.log(`isBasicQuery: Matched basic keyword in "${message}"`);
+        return true;
+    }
+
+    // Check 2: Does it look like a calculation request?
+    const hasCalculationKeyword = calculationKeywords.some(pattern => {
+        const regex = new RegExp(`\\b${pattern}\\b`);
+        return regex.test(message);
+    });
+    const looksLikeCalculation = operatorRegex.test(message);
+
+    if (hasCalculationKeyword || looksLikeCalculation) {
+        console.log(`isBasicQuery: Matched calculation intent in "${message}"`);
+        return true;
+    }
+
+    // If none of the above, it's not considered a basic query
+    console.log(`isBasicQuery: No basic match found in "${message}"`);
+    return false;
 }
 
 function handleBuiltInResponses(message) {
@@ -167,6 +199,7 @@ app.post('/chat-stream', async (req, res) => { // Changed route name for clarity
 
     try {
         // Handle basic queries directly (no streaming needed)
+        // This check now uses the refined isBasicQuery
         if (isBasicQuery(message)) {
             console.log('Handling built-in response for stream request...');
             const response = handleBuiltInResponses(message);
