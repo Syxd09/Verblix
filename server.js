@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const session = require('express-session');
-const bcrypt = require('bcrypt');
+const bcrypt = require("bcryptjs");
 const { generateSmartResponseStream } = require('./utils/search-services');
 
 const app = express();
