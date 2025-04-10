@@ -2,17 +2,9 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const session = require('express-session'); // Added
-const bcrypt = require('bcrypt'); // Added
-const {
-    fetchTrivia,
-    fetchQuotes,
-    fetchJokes,
-    fetchNews,
-    fetchMovies,
-    fetchNASAData
-} = require('./utils/api-handlers');
-const { generateSmartResponse, generateSmartResponseStream } = require('./utils/search-services');
+const session = require('express-session');
+const bcrypt = require('bcrypt');
+const { generateSmartResponseStream } = require('./utils/search-services');
 
 const app = express();
 const port = process.env.PORT || 3001;
