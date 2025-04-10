@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const session = require('express-session'); // Added
+const bcrypt = require('bcrypt'); // Added
 const {
     fetchTrivia,
     fetchQuotes,
@@ -15,18 +17,122 @@ const { generateSmartResponse, generateSmartResponseStream } = require('./utils/
 const app = express();
 const port = process.env.PORT || 3001;
 
-// Middleware setup - Ensure these are high up
-app.use(cors());
-// Increase payload size limit (e.g., to 10MB for testing)
+// --- User Storage (In-Memory - NOT FOR PRODUCTION) ---
+const users = {}; // { username: { passwordHash: '...', profile: {...} } }
+const saltRounds = 10; // For bcrypt
+
+// --- Middleware Setup ---
+app.use(cors({
+    origin: `http://localhost:${port}`, // Allow requests from frontend origin
+    credentials: true // Allow cookies for sessions
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// Serve static files (CSS, JS) from the directory containing server.js
+// Session Configuration
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'your-very-secret-key', // Use env variable for secret
+    resave: false,
+    saveUninitialized: false, // Don't save sessions for unauthenticated users
+    cookie: {
+        secure: process.env.NODE_ENV === 'production', // Use secure cookies in production (requires HTTPS)
+        httpOnly: true, // Prevent client-side JS access
+        maxAge: 1000 * 60 * 60 * 24 // Example: 1 day session duration
+    }
+}));
+
+// Serve static files
 app.use(express.static(__dirname));
 
 // Explicitly serve index.html for the root route
 app.get('/', (req, res) => {
+    // If logged in, serve index.html, otherwise maybe redirect to a login page (or handle client-side)
+    // For simplicity, always serve index.html and let client-side JS handle auth state display
     res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// --- Authentication Middleware ---
+function isAuthenticated(req, res, next) {
+    if (req.session && req.session.userId) {
+        console.log(`User ${req.session.userId} authenticated.`);
+        return next(); // User is logged in
+    } else {
+        console.log('Authentication failed: No active session.');
+        // For API requests, send 401 Unauthorized
+        return res.status(401).json({ type: 'error', text: 'Unauthorized: Please log in.' });
+    }
+}
+
+// --- Authentication Routes ---
+app.post('/auth/register', async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({ message: 'Username and password are required.' });
+    }
+    if (users[username]) {
+        return res.status(409).json({ message: 'Username already exists.' });
+    }
+    try {
+        const passwordHash = await bcrypt.hash(password, saltRounds);
+        users[username] = { passwordHash, profile: { username } }; // Store user
+        console.log(`User registered: ${username}`);
+        // Optionally log the user in immediately after registration
+        req.session.userId = username; // Create session
+        res.status(201).json({ message: 'Registration successful.', user: { username } });
+    } catch (error) {
+        console.error("Registration error:", error);
+        res.status(500).json({ message: 'Internal server error during registration.' });
+    }
+});
+
+app.post('/auth/login', async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({ message: 'Username and password are required.' });
+    }
+    const user = users[username];
+    if (!user) {
+        return res.status(401).json({ message: 'Invalid credentials.' });
+    }
+    try {
+        const match = await bcrypt.compare(password, user.passwordHash);
+        if (match) {
+            req.session.userId = username; // Create session
+            console.log(`User logged in: ${username}`);
+            res.status(200).json({ message: 'Login successful.', user: { username } });
+        } else {
+            res.status(401).json({ message: 'Invalid credentials.' });
+        }
+    } catch (error) {
+        console.error("Login error:", error);
+        res.status(500).json({ message: 'Internal server error during login.' });
+    }
+});
+
+app.get('/auth/logout', (req, res) => {
+    if (req.session) {
+        const username = req.session.userId;
+        req.session.destroy(err => {
+            if (err) {
+                console.error("Logout error:", err);
+                return res.status(500).json({ message: 'Could not log out, please try again.' });
+            }
+            console.log(`User logged out: ${username}`);
+            res.clearCookie('connect.sid'); // Clear the session cookie
+            res.status(200).json({ message: 'Logout successful.' });
+        });
+    } else {
+        res.status(200).json({ message: 'No active session to log out.' });
+    }
+});
+
+// Route to check current login status
+app.get('/auth/status', (req, res) => {
+    if (req.session && req.session.userId) {
+        res.status(200).json({ loggedIn: true, user: { username: req.session.userId } });
+    } else {
+        res.status(200).json({ loggedIn: false });
+    }
 });
 
 // Static Dataset
@@ -176,11 +282,14 @@ function handleBuiltInResponses(message) {
     return formatResponse("I'm not sure how to respond to that. Try asking for a joke, quote, or fact!", 'default');
 }
 
-// SSE endpoint for chat
-app.post('/chat-stream', async (req, res) => { // Changed route name for clarity
-    console.log('Received a chat stream request');
+// --- Protected Chat Endpoint ---
+// Apply isAuthenticated middleware BEFORE the main handler
+app.post('/chat-stream', isAuthenticated, async (req, res) => {
+    console.log(`Authenticated chat stream request from user: ${req.session.userId}`);
     const { message, history } = req.body;
 
+    // ... rest of the existing /chat-stream logic ...
+    // (No changes needed inside the handler itself regarding auth, middleware handles it)
     console.log(`Received message length: ${message?.length || 0}`);
     console.log(`Received history length: ${history?.length || 0} turns`);
 
@@ -195,58 +304,50 @@ app.post('/chat-stream', async (req, res) => { // Changed route name for clarity
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
-    res.flushHeaders(); // Flush the headers to establish the connection
+    res.flushHeaders();
 
     try {
-        // Handle basic queries directly (no streaming needed)
-        // This check now uses the refined isBasicQuery
         if (isBasicQuery(message)) {
+            // ... handle basic query ...
             console.log('Handling built-in response for stream request...');
             const response = handleBuiltInResponses(message);
-            // Send the built-in response as a single SSE event
             res.write(`event: message\ndata: ${JSON.stringify(response)}\n\n`);
-            res.write(`event: end\ndata: {}\n\n`); // Signal end
+            res.write(`event: end\ndata: {}\n\n`);
             res.end();
             return;
         }
 
-        // Get the stream from the LLM service
         console.log('Attempting to generate smart response stream...');
         const stream = await generateSmartResponseStream(message, history);
 
-        // Iterate over the stream and send chunks
         for await (const chunk of stream) {
-            try {
+            // ... stream chunks ...
+             try {
                 const chunkText = chunk.text();
-                // console.log('Sending chunk:', chunkText); // Debug log for chunks
                 const responseChunk = { type: 'ai', text: chunkText };
                 res.write(`event: message\ndata: ${JSON.stringify(responseChunk)}\n\n`);
             } catch (chunkError) {
                  console.error('Error processing stream chunk:', chunkError);
-                 // Decide if you want to send an error event or just log
-                 // res.write(`event: error\ndata: ${JSON.stringify({ type: 'error', text: 'Error processing stream chunk.' })}\n\n`);
             }
         }
-        // Signal the end of the stream
         res.write(`event: end\ndata: {}\n\n`);
-        res.end(); // Close the connection
+        res.end();
 
     } catch (error) {
+        // ... handle stream error ...
         console.error('Error in /chat-stream endpoint:', error);
-        // Send an error event before closing if possible
         const errorMessage = { type: 'error', text: `Stream generation failed: ${error.message}` };
         try {
             res.write(`event: error\ndata: ${JSON.stringify(errorMessage)}\n\n`);
         } catch (writeError) {
             console.error("Failed to write error event to SSE:", writeError);
         }
-        res.end(); // Ensure connection is closed on error
+        res.end();
     }
 
-    // Keep connection alive for SSE (handled by stream end/error)
     req.on('close', () => {
         console.log('Client disconnected from chat stream');
-        res.end(); // Ensure connection is closed if client disconnects
+        res.end();
     });
 });
 

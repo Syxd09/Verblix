@@ -1,9 +1,164 @@
-// --- Chat History Management ---
-let chats = {}; // Object to hold all chat sessions { chatId: { history: [], title: "" } }
+import { initializeAuth } from './js/auth.js';
+import { initializeChat } from './js/chat.js';
+// Note: ui.js is used by auth.js and chat.js, no direct initialization needed here usually
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("DOM fully loaded and parsed");
+    initializeAuth(); // Checks login status and sets up auth listeners
+    initializeChat(); // Sets up chat listeners (will only be effective if logged in)
+});
+
+// --- Global State ---
+let chats = {};
 let activeChatId = null;
 const CHATS_STORAGE_KEY = 'aiChatbotSessions';
+let currentUser = null; // Store logged-in user info { username: '...' }
+let currentBotMessageDiv = null;
+let currentBotMessageWrapper = null;
 
+// --- UI Selectors ---
+const authContainer = document.getElementById('auth-container');
+const appContainer = document.getElementById('app-container');
+const usernameDisplay = document.getElementById('username-display');
+// Add selectors for login/register inputs and error messages
+const loginUsernameInput = document.getElementById('login-username');
+const loginPasswordInput = document.getElementById('login-password');
+const loginErrorMsg = document.getElementById('login-error');
+const registerUsernameInput = document.getElementById('register-username');
+const registerPasswordInput = document.getElementById('register-password');
+const registerErrorMsg = document.getElementById('register-error');
+
+
+// --- UI Update Functions ---
+function showAuthUI() {
+    if (authContainer) authContainer.classList.remove('hidden');
+    if (appContainer) appContainer.classList.add('hidden');
+}
+
+function showAppUI() {
+    if (authContainer) authContainer.classList.add('hidden');
+    if (appContainer) appContainer.classList.remove('hidden');
+    if (usernameDisplay && currentUser) {
+        usernameDisplay.textContent = currentUser.username;
+    }
+    // Load chats only when showing the app UI after login
+    loadChats();
+}
+
+// --- Authentication API Calls ---
+async function checkLoginStatus() {
+    try {
+        const response = await fetch('/auth/status', { credentials: 'include' }); // Include cookies
+        if (!response.ok) {
+            console.error('Failed to fetch login status:', response.statusText);
+            showAuthUI(); // Assume logged out on error
+            return;
+        }
+        const data = await response.json();
+        if (data.loggedIn && data.user) {
+            currentUser = data.user;
+            console.log('User is logged in:', currentUser.username);
+            showAppUI();
+        } else {
+            currentUser = null;
+            console.log('User is not logged in.');
+            showAuthUI();
+        }
+    } catch (error) {
+        console.error('Error checking login status:', error);
+        showAuthUI(); // Assume logged out on network error
+    }
+}
+
+async function handleLogin() {
+    const username = loginUsernameInput.value.trim();
+    const password = loginPasswordInput.value.trim();
+    if (!username || !password) {
+        loginErrorMsg.textContent = 'Please enter username and password.';
+        return;
+    }
+    loginErrorMsg.textContent = ''; // Clear previous errors
+
+    try {
+        const response = await fetch('/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
+            credentials: 'include' // Include cookies for session
+        });
+        const data = await response.json();
+        if (response.ok) {
+            currentUser = data.user;
+            showAppUI();
+        } else {
+            loginErrorMsg.textContent = data.message || 'Login failed.';
+        }
+    } catch (error) {
+        console.error('Login request failed:', error);
+        loginErrorMsg.textContent = 'Login request failed. Please try again.';
+    }
+}
+
+async function handleRegister() {
+    const username = registerUsernameInput.value.trim();
+    const password = registerPasswordInput.value.trim();
+     if (!username || !password) {
+        registerErrorMsg.textContent = 'Please enter username and password.';
+        return;
+    }
+     if (password.length < 6) { // Example basic validation
+         registerErrorMsg.textContent = 'Password must be at least 6 characters.';
+         return;
+     }
+    registerErrorMsg.textContent = '';
+
+    try {
+        const response = await fetch('/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
+            credentials: 'include'
+        });
+        const data = await response.json();
+        if (response.ok) {
+            // Automatically logged in after registration by the server
+            currentUser = data.user;
+            showAppUI();
+        } else {
+            registerErrorMsg.textContent = data.message || 'Registration failed.';
+        }
+    } catch (error) {
+        console.error('Registration request failed:', error);
+        registerErrorMsg.textContent = 'Registration request failed. Please try again.';
+    }
+}
+
+async function handleLogout() {
+    try {
+        await fetch('/auth/logout', { method: 'GET', credentials: 'include' });
+        currentUser = null;
+        chats = {}; // Clear chat state on logout
+        activeChatId = null;
+        localStorage.removeItem(CHATS_STORAGE_KEY); // Clear stored chats
+        showAuthUI();
+        // Clear chat list and chat box UI
+        const chatListDiv = document.getElementById('chat-list');
+        if(chatListDiv) chatListDiv.innerHTML = '';
+        const chatBox = document.getElementById('chat-box');
+         if(chatBox) chatBox.querySelectorAll('.message-container').forEach(el => el.remove());
+         updateChatTitle(); // Reset title
+    } catch (error) {
+        console.error('Logout failed:', error);
+        // Handle logout error (e.g., display message)
+    }
+}
+
+
+// --- Chat History Management (Modified for Auth Context) ---
 function loadChats() {
+    // Only load if user is logged in
+    if (!currentUser) return;
+    // ... rest of existing loadChats logic ...
     const storedChats = localStorage.getItem(CHATS_STORAGE_KEY);
     if (storedChats) {
         chats = JSON.parse(storedChats);
@@ -24,6 +179,9 @@ function loadChats() {
 }
 
 function saveChats() {
+    // Only save if user is logged in
+    if (!currentUser) return;
+    // ... rest of existing saveChats logic ...
     localStorage.setItem(CHATS_STORAGE_KEY, JSON.stringify(chats));
 }
 
@@ -132,7 +290,6 @@ function loadChat(chatId) {
         const content = message.parts[0]?.text || '';
         if (content) {
              // Render message without triggering stream logic or adding copy buttons here
-             // A simplified render function might be needed, or adapt displayMessage
              renderArchivedMessage(content, sender);
         }
     });
@@ -224,13 +381,19 @@ function updateChatTitle() {
 
 // --- Modify existing functions ---
 let conversationHistory = [];
-let currentBotMessageDiv = null; // To append stream chunks
-let currentBotMessageWrapper = null; // Wrapper for the bot message bubble
 let currentEventSource = null; // To manage the EventSource connection
 
+// --- Send Message (Modified for Auth Context) ---
 const sendMessage = async () => {
-    const input = document.getElementById('user-input');
-    const message = input.value.trim();
+    // Check login status before sending
+    if (!currentUser) {
+        console.error("Cannot send message: User not logged in.");
+        // Optionally redirect to login or show message
+        return;
+    }
+    // ... rest of existing sendMessage logic ...
+     const input = document.getElementById('user-input');
+     const message = input.value.trim();
 
     if (!message || !activeChatId || !chats[activeChatId]) return; // Check active chat exists
 
@@ -261,14 +424,21 @@ const sendMessage = async () => {
     scrollToBottom();
 
     try {
-        // Send the current message and the history of the *active* chat
         const response = await fetch('/chat-stream', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: currentMessage, history: chats[activeChatId].history }), // Send active history
+            body: JSON.stringify({ message: currentMessage, history: chats[activeChatId].history }),
+            credentials: 'include' // IMPORTANT: Send session cookie
         });
 
-        // ... (rest of the fetch stream handling logic remains largely the same) ...
+        // Check for unauthorized response specifically
+        if (response.status === 401) {
+            console.error("Unauthorized. Session likely expired.");
+            handleLogout(); // Log out user and show login UI
+            return; // Stop processing
+        }
+
+        // ... rest of stream handling ...
         loadingIndicator.classList.add('hidden');
 
         if (!response.ok) { /* ... error handling ... */ throw new Error(`HTTP error! status: ${response.status}`); }
@@ -377,16 +547,28 @@ const displayMessage = (content, sender, isStreaming = false) => {
 
 // --- Initial Load and Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
-    // Load existing chats first
-    loadChats();
+    // Check login status first
+    checkLoginStatus(); // This will call showAppUI or showAuthUI
 
-    // Now attach all event listeners since the DOM is ready
+    // Attach listeners for AUTH buttons
+    const loginButton = document.getElementById('login-btn');
+    if (loginButton) loginButton.addEventListener('click', handleLogin);
+    else console.error("Login button not found");
+
+    const registerButton = document.getElementById('register-btn');
+    if (registerButton) registerButton.addEventListener('click', handleRegister);
+    else console.error("Register button not found");
+
+    const logoutButton = document.getElementById('logout-btn');
+    if (logoutButton) logoutButton.addEventListener('click', handleLogout);
+    else console.error("Logout button not found");
+
+
+    // Attach listeners for APP buttons (these elements only exist if logged in)
+    // It's okay to attach them here; they just won't fire if the elements are hidden.
     const sendButton = document.getElementById('send-btn');
-    if (sendButton) {
-        sendButton.addEventListener('click', sendMessage);
-    } else {
-        console.error("Send button not found");
-    }
+    if (sendButton) sendButton.addEventListener('click', sendMessage);
+    else console.error("Send button not found");
 
     const userInput = document.getElementById('user-input');
     if (userInput) {
@@ -398,40 +580,19 @@ document.addEventListener('DOMContentLoaded', () => {
             userInput.style.height = '40px';
           }
         });
-    } else {
-        console.error("User input textarea not found");
-    }
+    } else console.error("User input textarea not found");
 
     const clearHistoryButton = document.getElementById('clear-chat-history-btn');
-    if (clearHistoryButton) {
-        clearHistoryButton.addEventListener('click', clearActiveChatHistory);
-    } else {
-        console.error("Clear chat history button not found");
-    }
+    if (clearHistoryButton) clearHistoryButton.addEventListener('click', clearActiveChatHistory);
+    else console.error("Clear chat history button not found");
 
     const deleteAllButton = document.getElementById('delete-all-btn');
-    if (deleteAllButton) {
-        deleteAllButton.addEventListener('click', deleteAllChats);
-    } else {
-        console.error("Delete all chats button not found");
-    }
+    if (deleteAllButton) deleteAllButton.addEventListener('click', deleteAllChats);
+    else console.error("Delete all chats button not found");
 
     const newChatButton = document.getElementById('new-chat-btn');
-    if (newChatButton) {
-        newChatButton.addEventListener('click', createNewChat);
-    } else {
-        console.error("New chat button not found");
-    }
-
-    // Note: The old clear-chat button listener might be redundant or incorrect now
-    // Ensure the correct button ID ('clear-chat-history-btn') is used
-    // Remove the old listener if it exists targeting a different ID
-    /*
-    const oldClearChatButton = document.getElementById('clear-chat'); // Example if old ID was different
-    if (oldClearChatButton) {
-        // Remove or update its listener if necessary
-    }
-    */
+    if (newChatButton) newChatButton.addEventListener('click', createNewChat);
+    else console.error("New chat button not found");
 
 }); // End DOMContentLoaded
 

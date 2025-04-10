@@ -195,110 +195,186 @@
         gap: 0.5rem; /* gap-2 */
         align-items: flex-end; /* Align items bottom */
     }
-     #user-input {
-        /* Styles already defined */
-     }
-     #send-btn {
-        /* Styles already defined */
-        /* Removed self-end, alignment handled by parent flex */
-     }
+
+    /* Simple styles for auth containers */
+    #auth-container, #app-container {
+        height: 100vh; /* Full viewport height */
+        width: 100vw; /* Full viewport width */
+    }
+    #app-container {
+        display: flex; /* Use flex for sidebar + main content */
+    }
+    /* Hide elements */
+    .hidden {
+        display: none !important;
+    }
+
+    /* Base */
+    body { font-family: system-ui, sans-serif; }
+
+    /* Layout */
+    #app-container { display: flex; height: 100vh; }
+    #sidebar { width: 260px; background-color: #f9fafb; border-right: 1px solid #e5e7eb; padding: 1rem; display: flex; flex-direction: column; transition: width 0.3s ease; }
+    #main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; background-color: #f3f4f6; } /* Light gray background for main area */
+    #chat-area-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 1rem; }
+    #chat-container { background-color: #fff; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); border-radius: 0.5rem; flex: 1; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #e5e7eb; }
+    #chat-box { flex: 1; overflow-y: auto; padding: 1.5rem; scroll-behavior: smooth; }
+    #input-area { border-top: 1px solid #e5e7eb; padding: 1rem; background-color: #f9fafb; flex-shrink: 0; }
+    #input-area .flex { gap: 0.75rem; align-items: flex-end; }
+    #user-input { resize: none; min-height: 42px; max-height: 150px; overflow-y: auto; border-radius: 0.5rem; border: 1px solid #d1d5db; padding: 0.5rem 0.75rem; line-height: 1.5; }
+    #user-input:focus { border-color: #3b82f6; outline: 2px solid transparent; outline-offset: 2px; box-shadow: 0 0 0 2px #bfdbfe; }
+    #send-btn { height: 42px; width: 42px; display: flex; align-items: center; justify-content: center; border-radius: 0.5rem; }
+
+    /* Sidebar Enhancements */
+    #sidebar h2 { font-size: 1.125rem; color: #374151; }
+    #new-chat-btn { background-color: #4f46e5; /* Indigo */ transition: background-color 0.2s ease; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+    #new-chat-btn:hover { background-color: #4338ca; }
+    #chat-list { margin-top: 1.5rem; }
+    .chat-list-item { padding: 0.6rem 0.75rem; margin-bottom: 0.5rem; border-radius: 0.375rem; cursor: pointer; background-color: transparent; border: 1px solid transparent; transition: background-color 0.2s ease, border-color 0.2s ease; display: flex; justify-content: space-between; align-items: center; }
+    .chat-list-item span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; margin-right: 5px; font-size: 0.875rem; color: #4b5563; }
+    .chat-list-item:hover { background-color: #eef2ff; } /* Lighter indigo hover */
+    .chat-list-item.active { background-color: #e0e7ff; border-color: #c7d2fe; }
+    .chat-list-item.active span { color: #3730a3; font-weight: 500; }
+    .delete-chat-btn { color: #9ca3af; font-size: 0.75rem; }
+    .delete-chat-btn:hover { color: #ef4444; }
+    #delete-all-btn { color: #6b7280; }
+    #delete-all-btn:hover { color: #ef4444; }
+    #user-info { border-top: 1px solid #e5e7eb; padding-top: 1rem; margin-top: 1rem; }
+
+    /* Header */
+    #chat-title { font-size: 1.25rem; }
+
+    /* Message Bubbles */
+    .message-container { max-width: 100%; } /* Allow full width */
+    .message-bubble-wrapper { max-width: 80%; /* Limit bubble width */ position: relative; }
+    .message-container.user .message-bubble-wrapper { margin-left: auto; }
+    .message-container.bot .message-bubble-wrapper { margin-right: auto; }
+    .bot-message { background-color: #f3f4f6; /* Lighter gray for bot */ color: #1f2937; }
+    .bot-message p, .bot-message ul, .bot-message ol { margin-bottom: 0.75rem; }
+    .bot-message p:last-child, .bot-message ul:last-child, .bot-message ol:last-child { margin-bottom: 0; }
+    .bot-message pre { background-color: #111827; color: #d1d5db; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 0.75rem 0; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 0.875rem; line-height: 1.6; }
+    .bot-message code:not(pre > code) { background-color: #e5e7eb; color: #374151; padding: 0.15rem 0.4rem; border-radius: 0.25rem; font-size: 0.85em; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace; }
+    .copy-button { /* General copy button */ position: absolute; bottom: 6px; right: -30px; /* Position outside bubble */ background: none; border: none; color: #9ca3af; cursor: pointer; opacity: 0; transition: opacity 0.2s ease; font-size: 0.8rem; }
+    .message-bubble-wrapper:hover .copy-button { opacity: 0.7; }
+    .copy-button:hover { opacity: 1; color: #6b7280; }
+    .code-copy-button { /* Code block copy button */ position: absolute; top: 8px; right: 8px; background-color: #4b5563; color: #f3f4f6; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; opacity: 0; transition: opacity 0.2s ease, background-color 0.2s ease; z-index: 10; }
+    .bot-message pre:hover .code-copy-button { opacity: 0.7; }
+    .code-copy-button:hover { opacity: 1; background-color: #6b7280; }
+    .copy-button.copied, .code-copy-button.copied { background-color: #059669; color: white; }
+
+    /* Streaming Cursor */
+    @keyframes blink { 50% { opacity: 0; } }
+    .streaming-cursor { animation: blink 1s step-end infinite; display: inline-block; /* Prevents line break */ }
+
+    /* Scrollbar */
+    #chat-box::-webkit-scrollbar { width: 8px; }
+    #chat-box::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    #chat-box::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    #chat-list::-webkit-scrollbar { width: 6px; }
+    #chat-list::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
+    #chat-list::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
+
+    /* Auth Form */
+    #auth-container { background-color: #e5e7eb; }
+
+    /* Hidden */
+    .hidden { display: none !important; }
 
   </style>
 </head>
 
-<body class="flex h-screen overflow-hidden bg-gray-100"> <!-- Added bg-gray-100 -->
+<!-- Remove flex/h-screen from body, apply to containers -->
+<body class="overflow-hidden bg-gray-100">
 
-  <!-- Sidebar -->
-  <aside id="sidebar">
-    <h2 class="text-xl font-semibold text-gray-800">Chat History</h2>
-    <button id="new-chat-btn" class="mt-4">
-      <i class="fas fa-plus mr-2"></i>New Chat
-    </button>
-    <div id="chat-list" class="mt-4 space-y-2">
-      <!-- Chat list items will be populated here -->
-    </div>
-     <!-- Add Delete All Button -->
-     <button id="delete-all-btn" class="mt-auto text-sm text-red-600 hover:text-red-800 pt-4">
-        <i class="fas fa-exclamation-triangle mr-1"></i> Delete All Chats
-     </button>
-  </aside>
-
-  <!-- Main Content Area -->
-  <div id="main-content"> <!-- Removed class list -->
-
-    <!-- Header -->
-    <header class="bg-white shadow-sm w-full flex-shrink-0">
-      <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-        <h1 id="chat-title" class="text-xl font-bold text-gray-900 truncate">AI Chatbot</h1> <!-- Added ID and truncate -->
-        <!-- Clear button now clears the *active* chat HISTORY -->
-        <button id="clear-chat-history-btn" class="text-gray-500 hover:text-gray-700" title="Clear Active Chat History">
-          <i class="fas fa-eraser"></i> <!-- Changed icon -->
-        </button>
+  <!-- Authentication Container (Shown when logged out) -->
+  <div id="auth-container" class="hidden flex items-center justify-center">
+      <div class="bg-white p-8 rounded shadow-md w-full max-w-sm">
+          <h2 class="text-2xl font-bold mb-6 text-center">Login / Register</h2>
+          <!-- Login Form Placeholder -->
+          <div id="login-form">
+              <h3 class="text-lg mb-2">Login</h3>
+              <input type="text" id="login-username" placeholder="Username" class="w-full p-2 border rounded mb-2">
+              <input type="password" id="login-password" placeholder="Password" class="w-full p-2 border rounded mb-4">
+              <button id="login-btn" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Login</button>
+              <p id="login-error" class="text-red-500 text-sm mt-2"></p>
+          </div>
+          <hr class="my-4">
+          <!-- Register Form Placeholder -->
+          <div id="register-form">
+              <h3 class="text-lg mb-2">Register</h3>
+              <input type="text" id="register-username" placeholder="Username" class="w-full p-2 border rounded mb-2">
+              <input type="password" id="register-password" placeholder="Password" class="w-full p-2 border rounded mb-4">
+              <button id="register-btn" class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600">Register</button>
+              <p id="register-error" class="text-red-500 text-sm mt-2"></p>
+          </div>
+          <!-- Add links for forgot password etc. later -->
       </div>
-    </header>
+  </div>
 
-    <!-- Chat Area Wrapper -->
-    <div id="chat-area-wrapper">
-        <!-- Chat Container -->
-        <div id="chat-container">
-            <!-- Chat Box (Scrollable) -->
-            <div id="chat-box">
-                <div class="loading-indicator hidden text-center py-2 text-gray-500 italic">Loading...</div>
-                <!-- Messages will be appended here -->
-            </div>
+  <!-- Main Application Container (Shown when logged in) -->
+  <div id="app-container" class="hidden">
+      <!-- Sidebar -->
+      <aside id="sidebar">
+        <div class="flex justify-between items-center mb-4">
+             <h2 class="text-xl font-semibold text-gray-800">Chat History</h2>
+             <!-- User Info / Logout -->
+             <div id="user-info" class="text-sm">
+                 <span id="username-display" class="font-medium"></span>
+                 <button id="logout-btn" class="ml-2 text-red-500 hover:text-red-700" title="Logout">
+                     <i class="fas fa-sign-out-alt"></i>
+                 </button>
+             </div>
+        </div>
+        <button id="new-chat-btn" class="mt-4">
+          <i class="fas fa-plus mr-2"></i>New Chat
+        </button>
+        <div id="chat-list" class="mt-4 space-y-2">
+          <!-- Chat list items will be populated here -->
+        </div>
+         <button id="delete-all-btn" class="mt-auto text-sm text-red-600 hover:text-red-800 pt-4">
+            <i class="fas fa-exclamation-triangle mr-1"></i> Delete All Chats
+         </button>
+      </aside>
 
-            <!-- Chat Input Area -->
-            <div id="input-area">
-                <div class="flex"> <!-- Removed gap/items-start, handled in CSS -->
-                    <textarea
-                        id="user-input"
-                        class="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Type your message... (Shift+Enter for new line)"
-                        rows="1" ></textarea>
-                    <button id="send-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex-shrink-0">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
+      <!-- Main Content Area -->
+      <div id="main-content">
+        <!-- Header -->
+        <header class="bg-white shadow-sm w-full flex-shrink-0">
+          <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 id="chat-title" class="text-xl font-bold text-gray-900 truncate">AI Chatbot</h1>
+            <button id="clear-chat-history-btn" class="text-gray-500 hover:text-gray-700" title="Clear Active Chat History">
+              <i class="fas fa-eraser"></i>
+            </button>
+          </div>
+        </header>
+
+        <!-- Chat Area Wrapper -->
+        <div id="chat-area-wrapper">
+            <!-- Chat Container -->
+            <div id="chat-container">
+                <!-- Chat Box (Scrollable) -->
+                <div id="chat-box">
+                    <div class="loading-indicator hidden text-center py-2 text-gray-500 italic">Loading...</div>
+                </div>
+                <!-- Chat Input Area -->
+                <div id="input-area">
+                    <div class="flex">
+                        <textarea id="user-input" class="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type your message... (Shift+Enter for new line)" rows="1" ></textarea>
+                        <button id="send-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex-shrink-0">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div> <!-- End Chat Container -->
-    </div> <!-- End Chat Area Wrapper -->
-
-  </div> <!-- End Main Content Area -->
+        </div>
+      </div>
+  </div>
 
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
-  <script>
-    // Wait for the DOM to be fully loaded before running scripts that access elements
-    document.addEventListener('DOMContentLoaded', () => {
-        // Auto-scroll chat box to bottom
-        function scrollToBottom() {
-          const chatBox = document.getElementById("chat-box");
-          // Use setTimeout to ensure scroll happens after DOM update
-          setTimeout(() => {
-            if (chatBox) { // Add null check
-                chatBox.scrollTop = chatBox.scrollHeight;
-            }
-          }, 0);
-        }
-
-        // Auto-resize textarea
-        const textarea = document.getElementById('user-input');
-        if (textarea) { // Add null check
-            textarea.addEventListener('input', () => {
-                textarea.style.height = 'auto'; // Reset height
-                textarea.style.height = `${Math.min(textarea.scrollHeight, 150)}px`; // Set height based on content, capped at max-height
-            });
-        } else {
-            console.error("Textarea with ID 'user-input' not found.");
-        }
-
-        // Make scrollToBottom globally accessible if needed by script.js, or move it there
-        window.scrollToBottom = scrollToBottom;
-    });
-  </script>
-  <script src="script.js"></script> <!-- Ensure script.js is loaded last -->
+  <script type="module" src="script.js"></script> <!-- Use type="module" -->
 
 </body>
 </html>
