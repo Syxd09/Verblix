@@ -13,7 +13,7 @@ const generateSmartResponseStream = async (message, history = []) => {
 
         // Get the specific model and include the system instruction
         const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash",
+            model: "gemini-2.5-pro-exp-03-25",
             // Pass system instruction here
             systemInstruction: systemInstruction,
         });
