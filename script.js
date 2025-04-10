@@ -641,20 +641,6 @@ function addCopyButtonsToBotMessage(bubbleWrapper, fullText) {
      scrollToBottom(); // Final scroll after adding buttons and finalizing content
 }
 
-
-// Ensure clear chat also closes any active EventSource
-document.getElementById('clear-chat').addEventListener('click', () => {
-  if (currentEventSource) {
-      currentEventSource.close();
-      currentEventSource = null;
-      console.log("EventSource closed on clear chat.");
-  }
-  const chatBox = document.getElementById('chat-box');
-  chatBox.querySelectorAll('.message-container').forEach(el => el.remove());
-  conversationHistory = [];
-  // Reset other states if needed
-});
-
 // Helper function for clipboard copying and button feedback
 function copyTextToClipboard(text, buttonElement) {
     navigator.clipboard.writeText(text)

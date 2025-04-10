@@ -14,8 +14,16 @@ const users = {}; // { username: { passwordHash: '...', profile: {...} } }
 const saltRounds = 10; // For bcrypt
 
 // --- Middleware Setup ---
+
+// Enable trusting the proxy - IMPORTANT for Render/Heroku/etc.
+app.set('trust proxy', 1); // Trusts the first hop
+
 app.use(cors({
-    origin: `http://localhost:${port}`, // Allow requests from frontend origin
+    // Allow both localhost (for development) and your Render app's domain
+    origin: [
+        `http://localhost:${port}`,
+        'https://verblix.onrender.com' // Add your Render app URL here
+    ],
     credentials: true // Allow cookies for sessions
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -29,7 +37,9 @@ app.use(session({
     cookie: {
         secure: process.env.NODE_ENV === 'production', // Use secure cookies in production (requires HTTPS)
         httpOnly: true, // Prevent client-side JS access
-        maxAge: 1000 * 60 * 60 * 24 // Example: 1 day session duration
+        maxAge: 1000 * 60 * 60 * 24, // Example: 1 day session duration
+        sameSite: 'Lax' // Explicitly set SameSite (Lax is often suitable)
+        // Use 'None' if you have cross-site requirements, but it requires secure: true
     }
 }));
 
